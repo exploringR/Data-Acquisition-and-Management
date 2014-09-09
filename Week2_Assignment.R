@@ -129,13 +129,9 @@ pythagorastriplet <-  function(f,g,h)
   if (maxval^2 == minval^2 + thirdval^2)
   {
     print ("It is a Pythagorean Triplet")
-    result <- NULL
-    return (result)
   } else
   { 
-    print ("It is not a Pythagorean Triplet") 
-    result <- NULL
-    return (result)
+    print ("It is not a Pythagorean Triplet")
   }
   
 }
