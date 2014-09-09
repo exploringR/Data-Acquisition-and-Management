@@ -67,6 +67,7 @@ length(queue)
 ## there are one,two, or no solutions.
 
 quadraticeqn <- function(a,b,c)
+{
   delta = ((b^2) - (4*a*c))
   if (delta > 0)
   {
