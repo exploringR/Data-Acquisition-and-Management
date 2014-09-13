@@ -71,7 +71,6 @@ gcd <- function(x,y)
    factorx <- as.numeric(factorize(x))
    factory <- as.numeric(factorize(y)) 
    common <- intersect(factorx,factory)
-   common <- na.omit(common)
    pdt <- 1
    for (i in 1:length(common))
    {
