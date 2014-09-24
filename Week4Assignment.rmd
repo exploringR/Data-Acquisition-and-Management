@@ -1,0 +1,52 @@
+---
+title: "Week 4 Assignment Markdown"
+author: "Shipra Ahuja"
+date: "Tuesday, September 21, 2014"
+output: html_document
+---
+
+## Introduction
+
+This is an R Markdown document for Week 4 Assignment which includes the Algorithm, R Code and the Visualization.
+
+
+## Algorithm
+
+1. Read movies dataset.
+2. Find the mean of rating and votes for each year using ddply .
+3. Sort this dataset in order of highest average votes and rating to find the year with the highest votes and rating.
+
+
+## R Code
+```{r}
+movies <- read.table("movies.tab.gz", sep="\t", header=TRUE, quote="", comment="")
+library(plyr)
+mean_rate <- ddply(movies, .(year), colwise (mean, "rating")) 
+mean_votes <- ddply(movies, .(year), colwise (mean, "votes")) 
+result_mean <- cbind(mean_rate,mean_votes$votes)
+colnames(result_mean)[3]="votes"
+final_result <- arrange(result_mean, -votes, -rating)
+
+head(final_result)   
+## This shows the year 1999 being the year for best
+##                           popular movies 
+
+##year   rating    votes
+##1 1999 5.637104 1364.970
+##2 1995 5.739423 1213.835
+
+```
+
+
+## Visualization 
+```{r}
+library(ggplot2)
+ggplot(result_mean, aes(x= rating, y= votes)) + geom_point()
+
+```
+
+
+
+
+## Conclusion
+After the analysis, it is found that it was in year 1999 when the best popular movies were made.
