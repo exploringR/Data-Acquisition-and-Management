@@ -1,0 +1,169 @@
+\documentclass[titlepage]{scrartcl}
+\setkomafont{disposition}{\normalfont\bfseries}
+
+\title{\color{red}Profiling Data Set Project}
+\subtitle{\color{red}Post-Secondary Universe Survey 2013}
+\author{\color{blue}Shipra Ahuja}
+\date{\color{blue}09/21/2014}
+
+\usepackage{graphicx,verbatim,color,hyperref,ragged2e}
+\usepackage[table]{xcolor}
+\setlength{\textwidth}{6.5in} 
+\setlength{\textheight}{9in}
+\setlength{\oddsidemargin}{0in} 
+\setlength{\evensidemargin}{0in}
+\setlength{\topmargin}{-1.0cm}
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.5}
+
+\begin{document}
+\maketitle
+%SweaveOpts{concordance=TRUE}
+%\SweaveOpts{concordance=TRUE, echo=TRUE}
+
+\begin{flushleft}
+\phantomsection
+\addcontentsline{toc}{section}{Abstract}
+\section*{Abstract} 
+{Analysis of Post-Secondary Universe Survey 2013 utilizing the directory information for every educational institution in Integrated Postsecondary Education Data System.}
+
+\phantomsection
+\addcontentsline{toc}{section}{Dataset Description}
+\section*{Dataset Description}
+{This file contains directory information for every institution in the 2013 IPEDS universe. Includes name, address, city, state and zipcode. Identifies institutions as currently active, institutions that participate in Title IV federal financial aid programs for which IPEDS is mandatory. It also includes variables derived from the 2013 Institutional Characteristics survey, such as control and level of institution, highest level and highest degree offered and carnegie classifications.}
+
+\phantomsection
+\addcontentsline{toc}{section}{Data Source}
+\section*{Data Source}
+
+Department of Education Inventory \newline
+\url
+{Post-Secondary Universe Survey 2013 - Directory information}\newline
+
+
+CSV Data File \newline
+\url
+{https://inventory.data.gov/dataset/032e19b4-5a90-41dc-83ff-6e4cd234f565/resource/38625c3d-5388-4c16-a30f-d105432553a4/download/postscndryunivsrvy2013dirinfo.csv} \newline
+
+\phantomsection
+\addcontentsline{toc}{section}{Attribute Information}
+\section*{Attribute Information}
+
+Data Dictionary \newline
+\url
+{http://nces.ed.gov/ipeds/datacenter/data/HD2010_Dict.zip} 
+
+\end{flushleft}
+
+\phantomsection
+\addcontentsline{toc}{section}{Data Summary}
+\section*{Data Summary}
+\begin{center}
+\begin{tabular}{ || l || l || }
+\hline \hline
+Dataset Characteristics: & Multivariate \\ \hline
+Number of Instances: & 7769             \\ \hline
+Area: & Education                       \\ \hline
+Attribute Characteristics: & Categorical,Integer,Numeric,Alphanumeric  \\ \hline
+Number of Attributes: & 66              \\ \hline
+Missing Values: & Yes                   \\ \hline
+Number of Missing Values: & 1742        \\ \hline 
+Date Released: & 2013-01-01             \\ \hline
+Date Updated: & 2014-09-02              \\ \hline
+\hline \hline
+\end{tabular}
+\end{center}
+
+
+<<Analysis of each variable,echo=FALSE>>=
+ edu <- read.csv("postscndryunivsrvy2013dirinfo.csv")
+ summary(edu)
+@
+
+<<Total number of Missing Values,echo=FALSE,results='markup'>>=
+ edu <- read.csv("postscndryunivsrvy2013dirinfo.csv")
+ missing.vals <-sapply(edu, function(x) sum(is.na(x)))
+ missing.vals.df <-  as.data.frame(missing.vals)
+ sum.missing.vals <- as.numeric(colSums(missing.vals.df))
+ subset.missing.vals <- subset(missing.vals.df, missing.vals > 0)
+ @
+\phantomsection
+\addcontentsline{toc}{section}{Missing Values}
+\begin{flushleft}
+\section*{Missing Values}
+{Total number of missing values in Post-Secondary Universe Survey 2013 data is \Sexpr{as.numeric(colSums(as.data.frame(sapply(edu, function(x) sum(is.na(x))))))} \newline
+
+General Telephone Number and Fax Number are the two attributes which contain missing values. \newline
+Missing Values in each of the above two columns respectively are - \newline
+\Sexpr{subset(as.data.frame(sapply(edu, function(x) sum(is.na(x)))), missing.vals > 0)} \newline
+
+Possible reason of the missing values in General Telephone Number and Fax Number could be that those educational institutions have not listed their phone numbers/fax numbers or the format in which it is listed prevented them from getting captured when data was being collected.}
+
+\phantomsection
+\addcontentsline{toc}{section}{Analysis and Graphical Representations}
+\section*{Analysis and Graphical Representations}
+\subsection*{Count of institutions providing different high level course offerings}
+<<Number of institutions providing different high level of offerings,echo=FALSE>>=
+edu <- read.csv("postscndryunivsrvy2013dirinfo.csv")
+library(ggplot2)
+library(plyr)
+ddply(edu,c("HLOFFER"),summarise, count =length(HLOFFER))
+ggplot(data=edu) + geom_histogram(aes(x = HLOFFER),binwidth=0.3,fill="yellow",colour="black") + scale_x_continuous(breaks=-2:9) + ggtitle("Histogram-No. of institutions providing different high level of offerings")
+@
+The above histogram above provides the view of the no. of institutions providing different high level course offerings.\newline
+
+Outliers:
+Outliers have been identified in this histogram. \newline
+There are a negligible number of institutions for which data is "not applicable" or "not available". This is identified by values "-2" and "-3" respectively in HLOFFER attribute. \newline
+Therefore, the histogram is re-created to remove outliers.
+
+<<Number of institutions providing high level of offerings,echo=FALSE>>=
+edu <- read.csv("postscndryunivsrvy2013dirinfo.csv")
+library(ggplot2)
+ggplot(subset(edu,HLOFFER >= 0)) + geom_histogram(aes(x = HLOFFER),binwidth=0.3,fill="green",colour="black") + scale_x_continuous(breaks=0:9) + ggtitle("Histogram-No. of institutions providing different high level of offerings")
+@
+
+The above histogram shows that the majority of institutions provide the following course offerings in descending order - \newline
+1) Postsecondary award, certificate or diploma of at least one but less than two academic years (HLOFFER=2) \newline
+2) Associate's Degree(HLOFFER=3) \newline
+3) Doctor's degree(HLOFFER=9) \newline
+
+Below is the key provided for different high level offerings provided - 
+Highest level of offering (generated, based on response to IC
+survey) \newline
+0 - Other \newline
+1 - Postsecondary award, certificate or diploma of less than one academic year\newline
+2 - Postsecondary award, certificate or diploma of at least one but less than two academic years \newline
+3 - Associate's degree \newline
+4 - Postsecondary award, certificate or diploma of at least two but less than four academic years \newline
+5 - Bachelor's degree \newline
+6 - Postbaccalaureate certificate \newline
+7 - Master's degree \newline
+8 - Post-master's certificate \newline
+9 - Doctor's degree \newline
+b - None of the above or no answer \newline
+-2 - Not applicable, first-professional only \newline
+-3 - Not Available \newline
+
+\subsection*{Number of Universities for each state}
+The below table provides the count of universities/schools in each state.
+<<Number of universities in each state,echo=FALSE>>=
+edu <- read.csv("postscndryunivsrvy2013dirinfo.csv")
+library(ggplot2)
+library(plyr)
+ddply(edu,c("STABBR"),summarise, count =length(STABBR))
+ggplot(dat=edu) + geom_histogram(aes(x = STABBR),binwidth=0.3) + ggtitle("Number of universities per state")
+@
+The above histogram provides a view of the number of universities per state.\newline
+\subsection*{Number of universities providing graduate degree or certificate offering}
+
+<<Number of universities providing graduate offerings>>==
+edu <- read.csv("postscndryunivsrvy2013dirinfo.csv")
+library(ggplot2)
+ggplot(data=edu) + geom_histogram(aes(x = UGOFFER),binwidth=0.3,fill="yellow",colour="black") + geom_histogram(aes(x = GROFFER),binwidth=0.3,fill="red",colour="black") + scale_x_continuous(breaks=0:2) + ggtitle("Histogram-Number of graduate offerings by institutions")
+@
+Out of the 6000+ offerings, there are only 2000+ offerings provided by universities at graduate level.
+
+
+\end{flushleft}
+\end{document}
