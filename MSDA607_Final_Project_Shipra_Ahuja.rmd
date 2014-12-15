@@ -1,0 +1,734 @@
+---
+title: "Consumer Complaints Analysis"
+author: "Shipra Ahuja"
+date: "Monday, December 05, 2014"
+output: pdf_document
+---
+
+# Abstract
+
+Consumer Financial Protection Bureau (CFPB) receives complaints from consumers for difficulties faced with financial products/services and forwards the issues to the respective companies. Complaints revolve around several issues such as Bank accounts or services,Consumer loans,Credit cards,Credit reporting,Debt collection, Money transfers,Mortgages,Private student loans and Payday loans.
+Details of the complaints which comprises of the financial product name, sub-product name, the actual issue, sub-issue, where, how and when the complaint was raised are logged into a database. In addition, other details such as company name to which the complaint was sent, when it was sent and what was the company's response along with whether it was a timely response or not are also captured and stored in the same database. All this information about consumer complaints is published on the CFPB website. 
+
+Since all of us face many such issues when dealing with various financial products/services, I decided to do some analysis on this consumer complaints data to find out which financial product has the highest number of complaint closures and which products have the highest number of open complaints and untimely complaint responses. Also, one of the features of this project would be to rank the financial product companies based on the number of complaints received by the company against their products/services over a specific period of time say for example in the year 2014.In addition, analysis would include calculation of the percentage of consumer complaints which were responded in a timely manner and will find the top 10 companies based on highest percentage timely response.
+
+# Data Source 
+
+## Consumer Complaints Database
+
+[http://www.consumerfinance.gov/complaintdatabase]
+
+## CSV Data File
+
+[https://data.consumerfinance.gov/dataset/Consumer-Complaints/x94z-ydhh?"]
+
+# Dataset Description 
+
+Consumer Complaints against financial products and services are stored in this dataset. The various fields inthis datasetare the complaint id, financial product name,financialsub-produt name, the issue the consumder identified inthe complaint,the sub-issue identified by consumer in the complaint, zip-code wherethe complaint was filed,how compliant was filed, state where the complaint was filed, date complaint was received, data when complaint was sent to company, company name,company response, whether the response was timely and whether the response was disputed by the consumer. The table in the data dictionary shows the dataset attributes in greater detail.
+
+## Data Dictionary
+ 
+[http://www.consumerfinance.gov/complaintdatabase/technical-documentation/#field-reference]
+
+
+# Data Summary
+|                          |                    |
+|:-------------------------|:-------------------|
+|Dataset Characteristics   | Multivariate       |
+|Number of Instances       | 321173             |
+|Area                      | Consumer           |
+|Attribute Characteristics | Categorical,Integer|
+|Number of Attributes      | 14                 |
+|Missing Values            | Yes                |
+|Number of Missing Values  | 3944               |
+|Date Released             | 2014-02-26         |
+|Date Updated              | 2014-03-08         |
+
+# Data Acquisition
+
+Consumer Complaints csv file is downloaded from the URL [https://data.consumerfinance.gov/api/views/x94z-ydhh/rows.csv?accessType=DOWNLOAD"] and then the downloaded CSV file is read into R dataframe consumercomps.
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+
+## Download the Consumer_Complaints file from the URL
+fileurl <- "https://data.consumerfinance.gov/api/views/x94z-ydhh/rows.csv?accessType=DOWNLOAD"
+setInternet2(use = TRUE)
+download.file(fileurl,destfile="C:\\temp\\consumercomps.csv")
+
+## Read the CSV file
+consumercomps <- read.csv("C:\\temp\\consumercomps.csv")
+
+```
+
+# Data Transformation and Cleanup
+
+Remove all the missing values from the consumer complaints dataset and transform the columns containing dates into the date format.
+The dates Date.received and Date.sent.to.company have been transformed into the date format.
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+
+## Remove missing values fromthe consumercomps dataframe
+consumercomps <- na.omit(consumercomps)
+
+## Convert date columns Date.received and Date.sent.to.company to date format
+
+library(lubridate)
+
+temp_date_received <- gsub("/","-",consumercomps$Date.received)
+temp_date_received <- mdy(temp_date_received)
+consumercomps$Date.received <- as.Date(temp_date_received)
+
+temp_date_sent <- gsub("/","-",consumercomps$Date.sent.to.company)
+temp_date_sent <- mdy(temp_date_sent)
+consumercomps$Date.sent.to.company <- as.Date(temp_date_sent)
+
+temp_company <- gsub("Altisource Portfolio Solutions, S.Â. r.l.","Altisource Portfolio Solutions, S.A.r.l.",consumercomps$Company)
+
+consumercomps$Company <- temp_company
+
+colnames(consumercomps)[13] = "Timely.response"
+colnames(consumercomps)[14] = "Consumer.disputed"
+
+```
+
+# Data Analysis using R
+
+## Number of Complaints filed for various financial products
+
+**Analysis showing the number of complaints for complaints filed against financial products offered by various financial institutions.**
+
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+library(knitr)
+library(markdown)
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(scales)
+library(plotrix)
+library(RPostgreSQL)
+
+
+## Number of complaints against various financial products 
+
+y <- consumercomps %>%
+     group_by(Product) %>%
+     summarise(
+           no_of_complaints = length(Complaint.ID)
+            )
+
+arrange(y,desc(no_of_complaints))
+
+
+
+## Find the number of company responses for complaints against different financial products 
+
+##x <- ddply(consumercomps,c("Product"),summarise,count_of_company_responses =
+##length(Company.response))
+
+##print (x)
+
+## Barplot to show the number of complaints/company responses for complaints filed against companies for various Financial Products
+
+ggplot(y,aes(x=Product,y=no_of_complaints)) + geom_bar(width=0.7,fill="red",colour="black",stat = "identity") + scale_y_continuous(breaks=pretty_breaks(n=10)) + theme(axis.title.x=element_text(face="bold"),axis.title.y=element_text(face="bold"),axis.text.x=element_text(angle=50,vjust=0.5,face="bold",size=10),axis.text.y=element_text(size=10,face="bold"),plot.title=element_text(vjust=1)) + ggtitle("Complaints filed against Financial Products")
+
+```
+
+
+The highest number of complaints and thus the number company responses to the complaints are for the "Mortgages". It stands out clearly from the bar plot that consumers are majorly dissatisfied by the "mortgage" product/service provided by various financial institutions. There are about 120,000+ complaints against mortgages. The second category of complaints( in the range of 38K to 47K in number) are for Bank Accounts, Credit Cards, Credit Reporting and Debt Collection. Lastly, a very small number of complaints for Consumer Loans,Money Transfers, Payday Loans and Student Loans.
+
+
+
+## Rating of states based on number of complaints filed
+
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+
+## Number of complaints per state  
+
+subset_state <- filter(consumercomps, State != '')
+complaints_per_state <- ddply(subset_state,c("State"),summarise,no_of_complaints=length(Complaint.ID))
+rankstates <- arrange(complaints_per_state,desc(no_of_complaints))
+```
+
+### States having the highest number of complaints filed
+
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+toptenstates <- slice(rankstates,1:10)
+print (toptenstates)
+
+## 3D pie chart showing the top 10 states having highest number of complaints
+
+toptenstates$Percentage <- round(prop.table(toptenstates$no_of_complaints)*100,2)
+slices <- toptenstates$Percentage
+lbls <- toptenstates$State
+
+lbls <- paste(lbls,slices)
+lbls <- paste(lbls,"%",sep="")
+
+pie3D(slices,labels=lbls,labelcex=0.7,radius=1.5,explode=0.1,main="Pie Chart for top 10 states with highest number of complaints")
+
+```
+
+
+**Following shows the best, average and worst performing states based on the number of complaints filed againt the companies in each state.**
+
+
+### Best performing states 
+
+
+**Best performing states have the least number of consumer complaints(less than or equal to 10000) against the financial institutions in those states.**
+
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+
+## Categorize states as best performing, average and worst performing states in terms of compLaints against financial products
+
+## Best performing states based on the total no. of complaints filed in each state
+
+subset.rankstates.best <-  subset(rankstates,select = no_of_complaints,no_of_complaints < 10000 | no_of_complaints == 10000)
+subset.rankstates.beststates <-  subset(rankstates,select = c(State,no_of_complaints),no_of_complaints < 10000 | no_of_complaints == 10000)
+
+print(subset.rankstates.beststates)
+```
+
+### Average performing states
+
+
+**Average performing states are the states which have the no.of consumer complaints between 10000 to 20000.**
+
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+
+## Average performing states based on the total no. of complaints filed in each state
+
+subset.rankstates.avg <-  subset(rankstates,select = no_of_complaints,no_of_complaints > 10000 & (no_of_complaints < 20000 | no_of_complaints == 20000))
+
+subset.rankstates.avgstates <-  subset(rankstates,select = c(State,no_of_complaints),no_of_complaints > 10000 & (no_of_complaints < 20000 | no_of_complaints == 20000))
+
+print(subset.rankstates.avgstates)
+```
+
+
+### Worst performing states
+
+
+**Worst performing states have the maximum number of complaints(complaints > 20000) against the financial institutions situated in those states.**
+
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+
+## Worst performing states based on the total no. of complaints filed in each state
+subset.rankstates.worst <-  subset(rankstates,select = no_of_complaints,no_of_complaints > 20000)
+subset.rankstates.worststates <-  subset(rankstates,select = c(State,no_of_complaints),no_of_complaints > 20000)
+
+print(subset.rankstates.worststates)
+```
+
+
+### Average number of complaints for best, average and worst performing states
+
+
+**Average number of complaints for best performing states**
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+
+## Find the average number of complaints for best performing, average performing and worst performing states base on the total number of complaints
+
+mean_complaints_best  <- sapply(subset.rankstates.best, function(x) mean(x))
+print (mean_complaints_best)
+```
+
+
+**Average number of complaints for average performing states**
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+mean_complaints_avg <- sapply(subset.rankstates.avg, function(x) mean(x))
+print (mean_complaints_avg)
+```
+
+
+**Average number of complaints for worst performing states**
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+mean_complaints_worst <- sapply(subset.rankstates.worst,function(x) mean(x))
+print (mean_complaints_worst)
+
+##Bar Plot show number of complaints per state
+
+ggplot(complaints_per_state,aes(x=State,y=no_of_complaints)) + geom_bar(width=0.5,fill="green",colour="black",stat = "identity")+ scale_y_continuous(breaks=pretty_breaks(n=30)) + theme(axis.title.x=element_text(face="bold"),axis.title.y=element_text(face="bold"),axis.text.x=element_text(angle=90,vjust=0.5,face="bold",size=7),axis.text.y=element_text(size=10,face="bold"),plot.title=element_text(face="bold",vjust=2)) + ggtitle("Bar Plot representing complaints filed for various States")
+```
+
+
+The worst performing states in terms of financial products and services is California with a maximum number of complaints followed by Florida and then Texas and New York with an average number of complaints being 30912 per state.All states above have been categorized as worst performing states since they are having the number of complaints greater than 20000.
+The average performing states are Virginia,Maryland, Illinois, Pennsylvania, New Jersey, Georgia have an average of 11722 complaints per state.
+The best performing states are the ones which have an average of 2356 complaints  per state.
+The reason for states having least number of complaints could be the population density in the states. Hence, the number of complaints filed in a state would be directly proportional to population density.
+
+
+## Rating of companies based on number of complaints filed
+
+**Following shows the  best, average and the worst performing companies based on the total number of complaints filed against the companies** 
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+
+## Number of complaints per company in descending order - company with max complaints on the top)
+
+
+complaints_per_company <- ddply(consumercomps,c("Company"),summarise,No_of_complaints=length(Complaint.ID))
+rankcompanies <- arrange(complaints_per_company,desc(No_of_complaints))
+```
+
+
+### Top 10 companies with highest number of complaints
+
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+topten <- slice(rankcompanies,1:10)
+
+## Calculate percentage of the number of complaints for worst companies
+
+topten$Percentage <- round(prop.table(topten$No_of_complaints)*100,2)
+
+## Create a piechart showing top 10 companies with highest number of complaints
+
+slices <- topten$Percentage
+lbls <- topten$Company
+lbls <- paste(lbls,slices)       # Add percentages to the company names
+lbls <- paste(lbls,"%",sep="")   # Add percent sign to the percentage values
+
+pie(slices,labels = lbls, col=rainbow(length(lbls)),main="Top 10 companies with highest no. of complaints")
+
+```
+
+
+The piechart above shows the percentage of the complaints raised against the top 10 companies having the highest number of complaints filed against them. It shows that Bank of America has the highest percentage of complaints followed by Wells Fargo, JP Morgan Chase, Citibank and so on.
+
+
+### Best performing companies 
+
+**Best performing companies based on total number of complaints being less than or equal to 1000 till date**
+
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+
+## Best performing companies based on total number of complaints till date
+
+bestcompanies <- filter(rankcompanies,No_of_complaints < 1000 | No_of_complaints == 1000)
+bestcompanies <- arrange(bestcompanies,No_of_complaints)
+best50companies <- slice(bestcompanies,1:50)
+print(best50companies)
+
+```
+
+Only the 50 best companies are shown here. All the other best companies are shown in Appendix A at the bottom of the project report.
+
+
+### Average performing companies
+
+
+**Average performing companies based on total number of complaints anywhere between 1000-10000 till date**
+
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+
+## Average peforming companies based on total number of complaints till date
+
+avgcompanies <- filter(rankcompanies, (No_of_complaints < 10000 | No_of_complaints == 10000) & No_of_complaints > 1000)
+print(avgcompanies)
+```
+
+
+### Worst performing companies
+
+
+**Worst performing companies based on total number of complaints being greater than 10000 till date**
+
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+
+## Worst peforming companies based on total number of complaints till date
+
+worstcompanies <- filter(rankcompanies,No_of_complaints > 10000)
+print(worstcompanies)
+
+```
+
+There are a lot of small financial companies which have lowest number of consumer complaints and therefore are the best-performing financial companies.
+The average-performing companies have the consumer complaints anywhere between 1000-10000 complaints.
+The worst performing companies have the complaints greater than 10000. 
+
+## Financial products with max closed,open and untimely responded complaints
+
+
+**Financial products below have the maximum number of closed complaints, highest number of open complaints and untimely responses**
+
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+
+## Replace all types of closed company responses with "Closed"
+
+replace_companyresponse <- gsub("Closed with explanation|Closed with monetary relief|Closed with non-monetary relief|Closed with relief|Closed without relief","Closed",consumercomps$Company.response)
+
+## Copy original consumercomps dataframe to new dataframe after replacing the string value to "Closed" for all types of Closed responses
+
+replace_consumercomps <- consumercomps
+
+replace_consumercomps$Company.response <- replace_companyresponse
+
+## Find the count of company responses for the complaints for every financial product
+
+ count <- replace_consumercomps %>%
+     group_by(Company.response,Product) %>%
+     select(Product,Company.response) %>%
+     summarise(
+         No.of.complaints = length(Company.response)
+     
+     ) 
+
+## Arrange the company responses in descending order of the no. of complaints
+
+count <- arrange(count,Company.response,desc(No.of.complaints))
+```
+
+### Product with maximum number of closed complaints
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+
+## Find the financial product which has maximum no. of complaint closures
+
+subset(count,No.of.complaints==max((subset(count,Company.response == 'Closed'))$No.of.complaints))
+
+```
+
+
+### Product with maximum number of open complaints
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+
+## Find the financial product which has maximum no. of open complaints
+
+subset(count,No.of.complaints==max((subset(count,Company.response == 'In progress'))$No.of.complaints))
+
+```
+
+
+### Product with maximum number of untimely reponded complaints
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+
+## Find the financial product which has maximum no. of complaints with untimely responses
+
+subset(count,No.of.complaints==max((subset(count,Company.response == 'Untimely response'))$No.of.complaints))
+
+```
+
+Based on the analysis, the maximum number of complaint closures are for "Mortgages", highest number of open complaints are also for "Mortgages"" and the highest number of untimely responses for complaints are for "Debt Collection".
+
+
+## Yearly Trend of number of complaints
+
+**Below analysis shows the number of complaints filed per year thus showing the trend of complaints increasing/decreasing on a yearly basis**
+
+
+``````{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+## Calculate no. of complaints per year
+
+complaints_per_year <- consumercomps %>%
+                       group_by(Year=year(Date.received)) %>%
+                       summarise(
+                          No.of.complaints = length(Complaint.ID)
+                         )
+
+print (complaints_per_year)
+
+## Bar plot showing the no. of complaints filed per year
+
+ggplot(complaints_per_year,aes(x=Year,y=No.of.complaints)) + geom_bar(width=0.5,fill="blue",colour="black",stat = "identity")+ scale_y_continuous(breaks=pretty_breaks(n=10)) + theme(axis.title.x=element_text(face="bold"),axis.title.y=element_text(face="bold"),axis.text.x=element_text(vjust=0.5,face="bold",size=7),axis.text.y=element_text(size=10,face="bold"),plot.title=element_text(face="bold",vjust=2)) + ggtitle("Yearly trend of complaints")
+```
+
+
+The above plot clearly indicates that the number of complaints has been increasing over the years. The number of complaints was least in 2011 and it increased over the years and is highest in 2014. 
+
+``````{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+
+## Bar plot showing the various company responses to complaints filed over the years
+
+ggplot(consumercomps,aes(year(Date.received),fill=Company.response)) + geom_bar(position="dodge",binwidth=0.75)
+
+```
+
+
+The above plot above shows the number of various company responses to complaints filed in respective years. The highest number of complaint closures are for the ones for which the Company response is  "closed with explanation".
+
+## Monthly trend of number of complaints during every year from 2011 until 2014
+
+**Below analysis shows total number of monthly  complaints, average number of complaints per month and see how the trend of complaints varies during each year**
+
+
+``````{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+
+## Calculate the average number of complaints per month in 2011
+
+consumercomps_year <- subset(consumercomps,year(Date.received) == 2011)  
+
+complaints_per_month <- consumercomps_year %>%
+                  group_by(Month=month(Date.received,label=TRUE,abbr=FALSE)) %>%
+                  summarise(
+                            No.of.complaints = length(Complaint.ID)
+                           )
+```
+
+
+### Number of complaints per month in 2011
+
+#### Total number of complaints per month in 2011
+
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+print(complaints_per_month)
+```
+
+
+#### Average number of complaints per month in 2011**
+
+
+``````{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+print(mean(complaints_per_month$No.of.complaints))
+
+## Create a barplot for monthly no. of complaints during 2011
+
+ggplot(complaints_per_month,aes(x=Month,y=No.of.complaints)) + geom_bar(width=0.5,fill="orange",colour="black",stat = "identity")+ scale_y_continuous(breaks=pretty_breaks(n=10)) + theme(axis.title.x=element_text(face="bold"),axis.title.y=element_text(face="bold"),axis.text.x=element_text(angle = 50, vjust=0.5,face="bold",size=8.5),axis.text.y=element_text(size=10,face="bold"),plot.title=element_text(face="bold",vjust=2)) + ggtitle("Monthly trend of complaints in 2011")
+
+
+## Calculate the average number of complaints per month in 2012
+
+consumercomps_year <- subset(consumercomps,year(Date.received) == 2012)  
+
+complaints_per_month <- consumercomps_year %>%
+                  group_by(Month=month(Date.received,label=TRUE,abbr=FALSE)) %>%
+                  summarise(
+                            No.of.complaints = length(Complaint.ID)
+                           )
+```
+
+### Number of complaints per month in 2012
+
+#### Total number of complaints per month in 2012
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+print(complaints_per_month)
+```
+
+
+
+#### Average number of complaints per month in 2012
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+print(mean(complaints_per_month$No.of.complaints))
+
+## Create a barplot for monthly no. of complaints during 2012
+
+ggplot(complaints_per_month,aes(x=Month,y=No.of.complaints)) + geom_bar(width=0.5,fill="yellow",colour="black",stat = "identity")+ scale_y_continuous(breaks=pretty_breaks(n=10)) + theme(axis.title.x=element_text(face="bold"),axis.title.y=element_text(face="bold"),axis.text.x=element_text(angle = 50, vjust=0.5,face="bold",size=8.5),axis.text.y=element_text(size=10,face="bold"),plot.title=element_text(face="bold",vjust=2)) + ggtitle("Monthly trend of complaints in 2012")
+
+
+## Calculate the average number of complaints per month in 2013
+
+consumercomps_year <- subset(consumercomps,year(Date.received) == 2013)  
+
+complaints_per_month <- consumercomps_year %>%
+                  group_by(Month=month(Date.received,label=TRUE,abbr=FALSE)) %>%
+                  summarise(
+                            No.of.complaints = length(Complaint.ID)
+                           )
+```
+
+### Number of complaints per month in 2013
+
+#### Total number of complaints per month in 2013
+
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+print(complaints_per_month)
+```
+
+#### Average number of complaints per month in 2013
+
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+print(mean(complaints_per_month$No.of.complaints))
+
+## Create a barplot for monthly no. of complaints during 2013
+
+ggplot(complaints_per_month,aes(x=Month,y=No.of.complaints)) + geom_bar(width=0.5,fill="pink",colour="black",stat = "identity")+ scale_y_continuous(breaks=pretty_breaks(n=10)) + theme(axis.title.x=element_text(face="bold"),axis.title.y=element_text(face="bold"),axis.text.x=element_text(angle = 50, vjust=0.5,face="bold",size=8.5),axis.text.y=element_text(size=10,face="bold"),plot.title=element_text(face="bold",vjust=2)) + ggtitle("Monthly trend of complaints in 2013")
+
+
+## Calculate the average number of complaints per month in 2014
+
+consumercomps_year <- subset(consumercomps,year(Date.received) == 2014)  
+
+complaints_per_month <- consumercomps_year %>%
+                  group_by(Month=month(Date.received,label=TRUE,abbr=FALSE)) %>%
+                  summarise(
+                            No.of.complaints = length(Complaint.ID)
+                           )
+```
+
+### Number of complaints per month in 2014
+
+#### Total number of complaints per month in 2014(Till date)
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+print(complaints_per_month)
+```
+
+
+#### Average number of complaints per month in 2014(Till date)
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+print(mean(complaints_per_month$No.of.complaints))
+
+## Create a barplot for monthly no. of complaints during 2014
+
+ggplot(complaints_per_month,aes(x=Month,y=No.of.complaints)) + geom_bar(width=0.5,fill="brown",colour="black",stat = "identity")+ scale_y_continuous(breaks=pretty_breaks(n=10)) + theme(axis.title.x=element_text(face="bold"),axis.title.y=element_text(face="bold"),axis.text.x=element_text(angle = 50, vjust=0.5,face="bold",size=8.5),axis.text.y=element_text(size=10,face="bold"),plot.title=element_text(face="bold",vjust=2)) + ggtitle("Monthly trend of complaints in 2014")
+```
+
+
+The above plots are for the monthly number of complaints in different years from 2011-2014.
+Year 2011 has data only for 2 months - Nov and Dec since the data for consumer complaints was captured into the database starting Nov,2011 and therefore not sufficient enough to infer any results, though there is a drastic increase in the no. of complaints in Dec,2011 as compared to Nov,2011. 
+
+In 2012, number of complaints are relatively low in the beginning of the year(Jan and Feb, 2012) and then spikes up from March, 2012 onwards and remains more or less the same till the end of the year with no major variations.
+
+In 2013, the number of complaints remains relatively the same with an average of about 8900 complaints/month. There is no major intra-month variation during the year 2013.
+
+In 2014, the number of complaints remains mostly constant with a sudden drop in the number of complaints in Nov,2014.
+Note - Analysis includes the fact that Dec,2014 data is only till the current date, hence Dec,2014 complaint numbers are very small.
+
+## Appendix A
+
+
+**Appendix showing the remaining best companies based on the total number of complaints againts them till date**
+
+This appendix shows the best performing companies based on total number of complaints till date. First 50 best companies have been shown in section "Best performing companies" and the rest of the best companies are shown in this appendix.
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+best_companies <- slice(bestcompanies,51:nrow(bestcompanies))
+print (best_companies)
+```
+
+
+# Data Acquisition using PostgreSQL
+
+## Code to Create Table in SQL database
+
+```{r,warning=FALSE,error=FALSE,message=FALSE}
+##CREATE TABLE consumercomps(
+##  complaint_id integer PRIMARY KEY,
+##  product varchar(50),
+##  subproduct varchar(100),
+##  issue varchar(100),
+##	subissue varchar(100),
+##  state char(2),
+##	zipcode integer,
+##	submittedvia varchar(25),
+##	datereceived date,
+##	datesenttocompany date,
+##	company varchar(100),
+##	companyresponse varchar(60),
+##	timelyresponse char(3),
+##	consumerdisputed char(3)
+##	);
+
+```
+
+
+Note - Create table SQL above is shown as commented code using R comment syntax.
+
+
+## Code to Load data into SQL database
+
+```{r,warning=FALSE,error=FALSE,message=FALSE}
+##COPY consumercomps(complaint_id,product,subproduct,issue,subissue,state,zipcode
+##,submittedvia,datereceived,datesenttocompany,company,companyresponse,timelyresp##onse,consumerdisputed) FROM 'C:\temp\consumercomps.csv' WITH DELIMITER ',' CSV ##HEADER;
+```
+
+
+Note - Load table  SQL above is shown as commented code using R comment syntax.
+
+
+## Data Analysis using PostgreSQL
+
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+drv <- dbDriver("PostgreSQL")
+
+con <- dbConnect(drv, dbname="consumercomplaints", user = "postgres", password ="shipra63")
+```
+
+## Complaints raised for each financial product
+
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+query1 <- "select product, count(*) as no_of_complaints from consumercomps group by product order by no_of_complaints desc"
+dbGetQuery(con,query1)
+```
+
+
+## Top 10 states with highest number of complaints
+
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+query2 <- "select state, count(*) as no_of_complaints from consumercomps group by state order by no_of_complaints desc limit 10"
+dbGetQuery(con,query2)
+```
+
+
+## States categorized into Best, Average and Worst based on number of complaints
+
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+query3 <- "select state, count(*) as no_of_complaints,case when  count(*) <= 10000 then 'BEST' when ( count(*) > 10000 and  count(*) <= 20000) then 'AVERAGE' when  count(*) > 20000 then 'WORST' end as Category from consumercomps where state is NOT NULL group by state order by Category"
+dbGetQuery(con,query3)
+```
+
+
+## Top 10 companies having highest number of complaints
+
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+query4 <- "select company, count(*) as no_of_complaints from consumercomps group by company order by no_of_complaints desc limit 10"
+dbGetQuery(con,query4)
+```
+
+
+
+
+
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+
+## Companies categorized into Best,Average and Worst based on no. of complaints
+
+##query5 <- "select company, count(*) as no_of_complaints,case when ( count(*) > ##1000 and  count(*) <= 10000) then 'AVERAGE' when  count(*) > 10000 then 'WORST' ##when count(*) <= 1000 then 'BEST' end as Category from consumercomps group by ##company order by no_of_complaints desc"
+##dbGetQuery(con,query5)
+```
+
+## Yearly trend of complaints
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+query6 <- "select extract(YEAR from datereceived) as Year, count(*) as no_of_complaints from consumercomps group by Year order by Year"
+dbGetQuery(con,query6)
+```
+
+
+## Monthy trend of complaints
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+query7 <- "select extract(YEAR from datereceived) as Year, extract(MONTH from datereceived) as Month, count(*) as no_of_complaints from consumercomps group by Year, Month order by Year,Month"
+dbGetQuery(con,query7)
+
+dbDisconnect(con)
+
+dbUnloadDriver(drv)
+```
