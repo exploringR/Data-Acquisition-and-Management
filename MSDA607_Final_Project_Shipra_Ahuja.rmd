@@ -491,7 +491,7 @@ print(complaints_per_month)
 ```
 
 
-#### Average number of complaints per month in 2011**
+#### Average number of complaints per month in 2011
 
 
 ``````{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
