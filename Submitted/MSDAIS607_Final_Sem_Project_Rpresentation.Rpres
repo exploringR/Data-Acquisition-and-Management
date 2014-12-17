@@ -1,0 +1,293 @@
+MSDA IS607- Project - Consumer Complaints against Financial Products
+==========================================================
+author: Shipra Ahuja
+date:   17th Dec,2014
+transition: rotate
+font-family: Constantia
+
+Motivation
+=================================================================================
+
+Many of us face several issues with financial products offered by various financial institutions and end up calling their customer care centers spending hours together sometimes. So when I saw this consumer complaints data openly available, I was motivated to perform the below analysis - 
+
+- Financial Products - Highest number of complaints
+- States - Where maximum complaints are filed
+- Companies - Notorious receiving large number of complaints
+- Yearly trend of complaints
+- Monthly Average of number of complaints for each year
+- Peek into company responses - Closed, In progress, Untimely responses
+
+
+What Financial Products?
+========================================================
+
+- Bank accounts or services
+- Consumer loans
+- Credit cards
+- Credit reporting
+- Debt collection
+- Money transfers
+- Mortgages
+- Private student loans
+- Payday loans
+
+Financial Products - Top number of complaints
+===============================================
+
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
+
+## Download CSV data file from data.gov
+
+fileurl <- "https://data.consumerfinance.gov/api/views/x94z-ydhh/rows.csv?accessType=DOWNLOAD"
+setInternet2(use = TRUE)
+download.file(fileurl,destfile="C:\\temp\\consumercomps.csv")
+
+
+## Read the csv file into R
+consumercomps <- read.csv("C:\\temp\\consumercomps.csv")
+
+## Remove missing values fromthe consumercomps dataframe
+consumercomps <- na.omit(consumercomps)
+
+## Convert date columns Date.received and Date.sent.to.company to date format
+
+library(lubridate)
+
+temp_date_received <- gsub("/","-",consumercomps$Date.received)
+temp_date_received <- mdy(temp_date_received)
+consumercomps$Date.received <- as.Date(temp_date_received)
+
+temp_date_sent <- gsub("/","-",consumercomps$Date.sent.to.company)
+temp_date_sent <- mdy(temp_date_sent)
+consumercomps$Date.sent.to.company <- as.Date(temp_date_sent)
+ 
+## Cleanup the UTF8 characters as they are not setup to be used with Latex
+
+temp_company <- gsub("Altisource Portfolio Solutions, S.Â. r.l.","Altisource Portfolio Solutions, S.A.r.l.",consumercomps$Company)
+
+consumercomps$Company <- temp_company
+
+
+## Change the column names
+
+colnames(consumercomps)[13] = "Timely.response"
+colnames(consumercomps)[14] = "Consumer.disputed"
+
+library(dplyr)
+library(ggplot2)
+library(scales)
+
+## Find out the number of complaints for each financial product
+
+y <- consumercomps %>%
+     group_by(Product) %>%
+     summarise(
+           no_of_complaints = length(Complaint.ID)
+            )
+
+y <- arrange(y,desc(no_of_complaints))
+
+
+## Bar plot to show the number of complaints for each finacial product
+
+ggplot(y,aes(x=Product,y=no_of_complaints)) + geom_bar(width=0.7,fill="red",colour="black",stat = "identity") + scale_y_continuous("Number of complaints",breaks=pretty_breaks(n=10)) + theme(axis.title.x=element_text(face="bold"),axis.title.y=element_text(face="bold"),axis.text.x=element_text(angle=50,vjust=0.5,face="bold",size=10),axis.text.y=element_text(size=10,face="bold"),plot.title=element_text(vjust=1)) + ggtitle("Complaints filed against Financial Products")
+
+```
+
+States with maximum complaints
+==============================
+
+```{r, echo=FALSE}
+library(plyr)
+library(plotrix)
+
+## Find the number of complaints in each state and arrange them in descending order of the number of complaints
+
+subset_state <- filter(consumercomps, State != '')
+complaints_per_state <- ddply(subset_state,c("State"),summarise,no_of_complaints=length(Complaint.ID))
+rankstates <- arrange(complaints_per_state,desc(no_of_complaints))
+
+## Find the top 10 states having the highest number of complaints and calculate the percentage of complaints
+
+toptenstates <- slice(rankstates,1:10)
+toptenstates$Percentage <- round(prop.table(toptenstates$no_of_complaints)*100,2)
+
+slices <- toptenstates$Percentage
+lbls <- toptenstates$State
+lbls <- paste(lbls,slices)
+lbls <- paste(lbls,"%",sep="")
+
+## Create a 3D pie chart showing the top 10 states with their complaint percentages
+
+pie3D(slices,labels=lbls,labelcex=0.8,radius=0.75,explode=0.1,main="Pie Chart for top 10 states with highest number of complaints")
+
+```
+
+Top 10 notorious companies
+==========================
+
+```{r, echo=FALSE}
+
+## Find the top 10 companies having the highest number of complaints and calculate the percentage of complaints
+
+complaints_per_company <- ddply(consumercomps,c("Company"),summarise,No_of_complaints=length(Complaint.ID))
+rankcompanies <- arrange(complaints_per_company,desc(No_of_complaints))
+
+## Get the top 10 companies 
+
+topten <- slice(rankcompanies,1:10)
+topten$Percentage <- round(prop.table(topten$No_of_complaints)*100,2)
+
+slices <- topten$Percentage
+lbls <- topten$Company
+lbls <- paste(lbls,slices)
+lbls <- paste(lbls,"%",sep="")
+
+## Create a pie chart showing the top 10 states with their complaint percentages 
+
+pie(slices,labels = lbls,labelcex=0.8,radius=0.45,col=rainbow(length(lbls)),main="Top 10 companies with highest no. of complaints")
+
+```
+
+Yearly trend of complaints
+==========================
+
+```{r,echo=FALSE}
+
+## Find the total number of complaints per year
+
+complaints_per_year <- ddply(consumercomps,c(Year="year(Date.received)"),summarise,no_of_complaints=length(Complaint.ID))
+
+
+## Bar plot to show the yearly trend of complaints
+
+ggplot(complaints_per_year,aes(x=Year,y=no_of_complaints)) + geom_bar(width=0.5,fill="blue",colour="black",stat = "identity")+ scale_y_continuous("Number of complaints",breaks=pretty_breaks(n=10)) + theme(axis.title.x=element_text(face="bold"),axis.title.y=element_text(face="bold"),axis.text.x=element_text(vjust=0.5,face="bold",size=7),axis.text.y=element_text(size=10,face="bold"),plot.title=element_text(face="bold",vjust=2)) + ggtitle("Yearly trend of complaints")
+
+```
+
+Monthly average of complaints
+=============================
+
+```{r,echo=FALSE}
+
+## Calculate the average number of complaints per month for 2012
+
+consumercomps_year <- subset(consumercomps,year(Date.received) == 2012) 
+mean1 <- mean(ddply(consumercomps_year,c(Month="month(Date.received)"),summarise,no_of_complaints=length(Complaint.ID))$no_of_complaints)
+
+## Calculate the average number of complaints per month for 2013
+
+consumercomps_year <- subset(consumercomps,year(Date.received) == 2013) 
+mean2 <- mean(ddply(consumercomps_year,c(Month="month(Date.received)"),summarise,no_of_complaints=length(Complaint.ID))$no_of_complaints)
+
+
+## Calculate the average number of complaints per month for 2013
+
+consumercomps_year <- subset(consumercomps,year(Date.received) == 2014) 
+mean3 <- mean(ddply(consumercomps_year,c(Month="month(Date.received)"),summarise,no_of_complaints=length(Complaint.ID))$no_of_complaints)
+
+avgcomplaints <- c(mean1,mean2,mean3)
+
+Year <- c("2012","2013","2014")
+
+df <- data.frame(Year,avgcomplaints)
+
+## Bar plot to show average number of complaints per month for every year
+
+ggplot(df,aes(x=Year,y=avgcomplaints)) + geom_bar(width=0.5,fill="orange",colour="black",stat = "identity") + scale_y_continuous("Average Number of complaints per month",breaks=pretty_breaks(n=10)) + theme(axis.title.x=element_text(face="bold"),axis.title.y=element_text(face="bold"),axis.text.x=element_text(vjust=0.5,face="bold",size=7),axis.text.y=element_text(size=10,face="bold"),plot.title=element_text(face="bold",vjust=2)) + ggtitle("Monthly average of complaints over the years")
+```
+
+Peek into company responses for the complaints filed
+====================================================
+
+```{r,echo=FALSE,fig.width=5}
+
+## Consider all types of Closed responses as "Closed". 
+
+replace_companyresponse <- gsub("Closed with explanation|Closed with monetary relief|Closed with non-monetary relief|Closed with relief|Closed without relief","Closed",consumercomps$Company.response)
+
+## Copy original consumercomps dataframe to new dataframe after replacing the string value to "Closed" for all types of Closed responses
+
+replace_consumercomps <- consumercomps
+
+replace_consumercomps$Company.response <- replace_companyresponse
+
+## Find the count of company responses for the complaints for every financial product
+
+count <- ddply(consumercomps,c(Response="Company.response","Product"),summarise,Complaints=length(Company.response))
+
+## Arrange the company responses in descending order of the no. of complaints
+
+count <- arrange(count,Response,desc(Complaints))
+
+
+## Find the financial product which has maximum no. of complaint closures
+
+closedcomps <- subset(count,Complaints==max((subset(count,Response == 'Closed'))$Complaints))
+
+## Find the financial product which has maximum no. of open complaints
+
+opencomps <- subset(count,Complaints==max((subset(count,Response == 'In progress'))$Complaints))
+
+## Find the financial product which has maximum no. of complaints with untimely responses
+
+untimelyrespcomps <- subset(count,Complaints==max((subset(count,Response == 'Untimely response'))$Complaints))
+
+
+untimelyrespcomps$Response <- gsub("Untimely response","Untimely Resp",untimelyrespcomps$Response)
+
+## Combine all the products with max company responses together
+
+df <- rbind(closedcomps,opencomps,untimelyrespcomps)
+
+print(df)
+```
+
+Challenges faced
+================
+
+- CSV File would not get downloaded from the specified link when doing so in R Markdown. Kept getting "Unsupported URL scheme" error. Surprisingly, the file was getting downloaded using R console which added to the confusion
+
+Resolution - "setInternet2(use = TRUE)" in R Markdown
+
+- Issue with UTF-8 unicode characters in the data. They are not setup for use with R Markdown/Latex.
+
+Resolution - Substitute those characters using regular alphabets.
+Example - LATIN CAPITAL LETTER A WITH CIRCUMFLEX had to be replaced to 'A' during data cleanup
+
+
+Highlights
+==========
+
+- Created this slideshow in R. 
+
+
+Conclusion
+==========
+- <small>Number of complaints - Highest for "Mortgages" followed by Debt Collection, Credit Reporting, Credit Card, Bank Accounts/Services</small>
+
+- <small>Number of complaints filed in a state are directly proportional to the population of the state</small>
+
+- <small>Big banks have a large customer base which possibly is the major reason for  more number of complaints against financial products offered by them</small>
+
+- <small>Complaints have shown an increasing trend over the years & are highest in 2014</small>
+  
+- <small>Mortgages have the highest Open & Closed complaints and Debt Collection has highest untimely company responses</small>
+
+
+                      Thankyou
+====================================================
+
+
+
+        
+        
+                    
+                    
+                    
+                    
+                    
+                  
+                    
+                    
+                    
