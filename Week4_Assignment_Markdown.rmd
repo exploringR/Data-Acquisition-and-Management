@@ -1,0 +1,52 @@
+---
+title: "Week 4 Assignment Markdown"
+author: "Shipra Ahuja"
+date: "Tuesday, September 21, 2014"
+output: html_document
+---
+
+## Introduction
+
+This is an R Markdown document for Week 4 Assignment which includes the Algorithm, R Code and the Visualization.
+
+
+## Algorithm
+
+1. Sort the movies dataset in descending order of votes and rating. This has been done using the arrange function of plyr package.
+2. Subset the sorted movies dataset to display the year along with votes and rating of movies in order to identify the "year" when best popular movies were made.
+3. Create a ggplot to depict the year when best popular movies were made.
+
+## R Code
+```{r}
+movies <- read.table("movies.tab.gz", sep="\t", header=TRUE, quote="", comment="")
+library(plyr)
+sort.movies <- arrange(movies,-votes,-rating)
+subset.sort.movies <- subset(sort.movies,select=c(year,votes,rating))
+
+##head(subset.sort.movies)   This shows the year 2001 being the year for best
+##                           popular movies 
+
+##  year  votes rating
+##1 2001 157608    8.8
+##2 1994 149494    9.1
+##3 1999 143853    8.5
+##4 1977 134640    8.8
+##5 1994 132745    8.8
+##6 1972 122755    9.1
+
+```
+
+
+## Visualization 
+```{r}
+library(ggplot2)
+ggplot(subset.sort.movies, aes(x= rating, y= votes)) + geom_point()
+
+```
+
+
+
+
+## Conclusion
+After the analysis, it is found that it was in year 2001 when the best popular movies were made.
+
